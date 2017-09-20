@@ -1479,9 +1479,11 @@ impl CodeGenerator for CompInfo {
             derives.push("PartialEq");
         } else {
             needs_partialeq_impl = ctx.options().derive_partialeq && 
-                ctx
-                    .lookup_item_id_can_derive_partialeq_or_partialord(item.id())
-                    .map_or(true, |x| x == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                ctx.options().impl_partialeq &&
+                ctx.lookup_item_id_can_derive_partialeq_or_partialord(item.id())
+                    .map_or(true, |x| {
+                        x == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                    });
         }
 
         if item.can_derive_eq(ctx) {
