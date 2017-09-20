@@ -104,6 +104,10 @@ fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> Option<quote::Tok
             gen_field(ctx, inner_item, name)
         }
 
+        TypeKind::Pointer(_) => {
+            quote_equals(name_ident)
+        }
+
         ref other => {
             // TODO: List explicitly
             // Not supported
