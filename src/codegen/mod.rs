@@ -1905,12 +1905,13 @@ impl CodeGenerator for CompInfo {
         }
 
         if needs_partialeq_impl {
-            let impl_ = impl_partialeq::gen_partialeq_impl(ctx, self.fields(), item, self.kind());
-            result.push(quote! {
-                impl #generics ::std::cmp::PartialEq for #ty_for_impl {
-                    #impl_
-                }
-            });
+            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self.fields(), item, self.kind()) {    
+                result.push(quote! {
+                    impl #generics ::std::cmp::PartialEq for #ty_for_impl {
+                        #impl_
+                    }
+                });
+            }
         }
 
         if !methods.is_empty() {
