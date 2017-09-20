@@ -4,7 +4,7 @@ use super::analysis::{CannotDeriveCopy, CannotDeriveDebug,
                       CannotDeriveDefault, CannotDeriveHash,
                       CannotDerivePartialEqOrPartialOrd, HasTypeParameterInArray,
                       HasVtableAnalysis, HasDestructorAnalysis, UsedTemplateParameters,
-                      HasFloat, analyze};
+                      HasFloat, CannotDerivePartialEqOrPartialOrdReason, analyze};
 use super::derive::{CanDeriveCopy, CanDeriveDebug, CanDeriveDefault,
                     CanDeriveHash, CanDerivePartialOrd, CanDeriveOrd,
                     CanDerivePartialEq, CanDeriveEq};
@@ -72,21 +72,21 @@ impl CanDeriveHash for ItemId {
 impl CanDerivePartialOrd for ItemId {
     fn can_derive_partialord(&self, ctx: &BindgenContext) -> bool {
         ctx.options().derive_partialord &&
-            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self)
+            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self).is_none()
     }
 }
 
 impl CanDerivePartialEq for ItemId {
     fn can_derive_partialeq(&self, ctx: &BindgenContext) -> bool {
         ctx.options().derive_partialeq &&
-            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self)
+            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self).is_none()
     }
 }
 
 impl CanDeriveEq for ItemId {
     fn can_derive_eq(&self, ctx: &BindgenContext) -> bool {
         ctx.options().derive_eq &&
-            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self) &&
+            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self).is_none() &&
             !ctx.lookup_item_id_has_float(&self)
     }
 }
@@ -94,7 +94,7 @@ impl CanDeriveEq for ItemId {
 impl CanDeriveOrd for ItemId {
     fn can_derive_ord(&self, ctx: &BindgenContext) -> bool {
         ctx.options().derive_ord &&
-            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self) &&
+            ctx.lookup_item_id_can_derive_partialeq_or_partialord(*self).is_none() &&
             !ctx.lookup_item_id_has_float(&self)
     }
 }
@@ -237,11 +237,11 @@ pub struct BindgenContext {
     /// and is always `None` before that and `Some` after.
     cannot_derive_hash: Option<HashSet<ItemId>>,
 
-    /// The set of (`ItemId`s of) types that can't derive hash.
+    /// The map why specified `ItemId`s of) types that can't derive hash.
     ///
     /// This is populated when we enter codegen by `compute_can_derive_partialeq`
     /// and is always `None` before that and `Some` after.
-    cannot_derive_partialeq_or_partialord: Option<HashSet<ItemId>>,
+    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, CannotDerivePartialEqOrPartialOrdReason>>,
 
     /// The set of (`ItemId's of`) types that has vtable.
     ///
@@ -2150,7 +2150,7 @@ impl BindgenContext {
 
     /// Look up whether the item with `id` can
     /// derive partialeq or partialord.
-    pub fn lookup_item_id_can_derive_partialeq_or_partialord(&self, id: ItemId) -> bool {
+    pub fn lookup_item_id_can_derive_partialeq_or_partialord(&self, id: ItemId) -> Option<CannotDerivePartialEqOrPartialOrdReason> {
         assert!(
             self.in_codegen_phase(),
             "We only compute can_derive_partialeq_or_partialord when we enter codegen"
@@ -2158,7 +2158,7 @@ impl BindgenContext {
 
         // Look up the computed value for whether the item with `id` can
         // derive partialeq or not.
-        !self.cannot_derive_partialeq_or_partialord.as_ref().unwrap().contains(&id)
+        self.cannot_derive_partialeq_or_partialord.as_ref().unwrap().get(&id).cloned()
     }
 
     /// Look up whether the item with `id` can

@@ -1,4 +1,5 @@
 mod derive_debug;
+mod impl_partialeq;
 mod error;
 mod helpers;
 pub mod struct_layout;
@@ -1445,6 +1446,7 @@ impl CodeGenerator for CompInfo {
         let mut needs_clone_impl = false;
         let mut needs_default_impl = false;
         let mut needs_debug_impl = false;
+        let mut needs_partialeq_impl = false;
         if let Some(comment) = item.comment(ctx) {
             attributes.push(attributes::doc(comment));
         }
@@ -1500,6 +1502,8 @@ impl CodeGenerator for CompInfo {
 
         if item.can_derive_partialeq(ctx) {
             derives.push("PartialEq");
+        } else {
+            needs_partialeq_impl = ctx.options().derive_partialeq && !ctx.no_partialeq_by_name(item);
         }
 
         if item.can_derive_eq(ctx) {
@@ -1923,6 +1927,15 @@ impl CodeGenerator for CompInfo {
 
             result.push(quote! {
                 impl #generics ::std::fmt::Debug for #ty_for_impl {
+                    #impl_
+                }
+            });
+        }
+
+        if needs_partialeq_impl {
+            let impl_ = impl_partialeq::gen_partialeq_impl(ctx, self.fields(), item, self.kind());
+            result.push(quote! {
+                impl #generics ::std::cmp::PartialEq for #ty_for_impl {
                     #impl_
                 }
             });
