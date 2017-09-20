@@ -13,7 +13,7 @@ use ir::ty::TypeKind;
 use std::collections::HashMap;
 
 /// Reason why we cannot derive PartialEq or PartialOrd.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CannotDerivePartialEqOrPartialOrdReason {
     /// Array that contains more than 32 elements.
     ArrayTooLarge,

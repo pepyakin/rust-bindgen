@@ -15,6 +15,7 @@ use ir::context::{BindgenContext, ItemId};
 use ir::derive::{CanDeriveCopy, CanDeriveDebug, CanDeriveDefault,
                  CanDeriveHash, CanDerivePartialOrd, CanDeriveOrd,
                  CanDerivePartialEq, CanDeriveEq};
+use ir::analysis::CannotDerivePartialEqOrPartialOrdReason;
 use ir::dot;
 use ir::enum_ty::{Enum, EnumVariant, EnumVariantValue};
 use ir::function::{Abi, Function, FunctionSig};
@@ -1477,7 +1478,10 @@ impl CodeGenerator for CompInfo {
         if item.can_derive_partialeq(ctx) {
             derives.push("PartialEq");
         } else {
-            needs_partialeq_impl = ctx.options().derive_partialeq && !ctx.no_partialeq_by_name(item);
+            needs_partialeq_impl = ctx.options().derive_partialeq && 
+                ctx
+                    .lookup_item_id_can_derive_partialeq_or_partialord(item.id())
+                    .map_or(true, |x| x == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
         }
 
         if item.can_derive_eq(ctx) {
