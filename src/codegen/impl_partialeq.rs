@@ -8,13 +8,13 @@ use quote;
 pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Item, ty_for_impl: &quote::Tokens) -> Option<quote::Tokens> {
     let _ty = item.expect_type();    
     if item.is_opaque(ctx, &()) {
-        // We can't generate PartialEq for opaque types.
-        return None;
+        // TODO: We can't generate PartialEq for opaque types.
+        panic!();
     }
 
     if comp_info.kind() == CompKind::Union {
-        // Don't know how to generate PartialEq for Union
-        return None;
+        // TODO: Don't know how to generate PartialEq for Union
+        panic!();
     }
 
     let mut tokens = vec![];
@@ -40,8 +40,8 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
                 let name = match fd.name() {
                     Some(name) => name,
                     None => {
-                        // Bitfield stuff
-                        return None
+                        // TODO: Bitfield stuff
+                        panic!()
                     }
                 };
                 match gen_field(ctx, item, name) {
@@ -50,8 +50,8 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
                 }
             }
             Field::Bitfields(_) => {
-                // We don't know how to generate Bitfields
-                return None;
+                // TODO: We don't know how to generate Bitfields
+                panic!();
             }
         }
     }
@@ -99,7 +99,6 @@ fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> Option<quote::Tok
         }
 
         TypeKind::Array(_t, len) => {
-            // TODO: What if t is not debug?
             if len <= RUST_DERIVE_IN_ARRAY_LIMIT {
                 quote_equals(name_ident)
             } else {
