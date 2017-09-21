@@ -1928,9 +1928,9 @@ impl CodeGenerator for CompInfo {
                     quote! { }
                 };
 
-                // TODO: std/core prefix
+                let prefix = ctx.trait_prefix();
                 result.push(quote! {
-                    impl #generics ::std::cmp::PartialEq for #ty_for_impl #partialeq_bounds {
+                    impl #generics ::#prefix::cmp::PartialEq for #ty_for_impl #partialeq_bounds {
                         #impl_
                     }
                 });
