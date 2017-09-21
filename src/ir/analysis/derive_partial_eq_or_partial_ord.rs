@@ -85,15 +85,7 @@ impl<'ctx> CannotDerivePartialEqOrPartialOrd<'ctx> {
 
     fn insert(&mut self, id: ItemId, reason: Reason) -> ConstrainResult {
         trace!("inserting {:?} into the cannot_derive_partialeq_or_partialord because {:?}", id, reason);
-
-        let _was_not_already_in_set = self.cannot_derive_partialeq_or_partialord.insert(id, reason);
-        // assert!(
-        //     was_not_already_in_set.is_none(),
-        //     "We shouldn't try and insert {:?} twice because if it was \
-        //      already in the set, `constrain` should have exited early.",
-        //     id
-        // );
-
+        self.cannot_derive_partialeq_or_partialord.insert(id, reason);
         ConstrainResult::Changed
     }
 }
@@ -286,42 +278,34 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     }
                 }
 
-                let bases_cannot_derive =
-                    info.base_members().iter().any(|base| {
-                        !self.ctx.whitelisted_items().contains(&base.ty) ||
-                            self.cannot_derive_partialeq_or_partialord.contains_key(&base.ty)
-                    });
-                if bases_cannot_derive {
+                let bases_cannot_derive: Vec<Reason> =
+                    info.base_members().iter().filter_map(|base| {
+                        if !self.ctx.whitelisted_items().contains(&base.ty) {
+                            return Some(Reason::Other);
+                        }
+                        self.cannot_derive_partialeq_or_partialord.get(
+                            &base.ty
+                        ).cloned()
+                    }).collect();
+                if let Some(reason) = choose_reason(&bases_cannot_derive) {
                     trace!(
                         "    base members cannot derive PartialEq or PartialOrd, so we can't \
                             either"
                     );
-                    let arrays_too_large = info.base_members().iter().all(|base| {
-                        self.cannot_derive_partialeq_or_partialord
-                            .get(&base.ty)
-                            .map_or(true, |r| *r == Reason::ArrayTooLarge)
-                    });
-                    let reason = if arrays_too_large {
-                        Reason::ArrayTooLarge
-                    } else {
-                        Reason::Other
-                    };
                     return self.insert(id, reason);
                 }
 
-                let fields_cannot_derive_reasons = info.fields().iter().filter_map(|f| match *f {
+                let fields_cannot_derive_reasons: Vec<Reason> = 
+                    info.fields().iter().filter_map(|f| match *f {
                         Field::DataMember(ref data) => {
                             if !self.ctx.whitelisted_items().contains(
                                 &data.ty(),
                             ) {
-                                Some(Reason::Other)
-                            } else if let Some(reason) = self.cannot_derive_partialeq_or_partialord.get(
-                                    &data.ty(),
-                            ) {
-                                Some(*reason)
-                            } else {
-                                None
+                                return Some(Reason::Other);
                             }
+                            self.cannot_derive_partialeq_or_partialord.get(
+                                &data.ty(),
+                            ).cloned()
                         }
                         Field::Bitfields(ref bfu) => {
                             if bfu.layout().align > RUST_DERIVE_IN_ARRAY_LIMIT {
@@ -331,45 +315,23 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                 );
                                 return Some(Reason::Other);
                             }
-                            let p = bfu.bitfields().iter().filter_map(|b| {
+                            let p: Vec<Reason> = bfu.bitfields().iter().filter_map(|b| {
                                 if !self.ctx.whitelisted_items().contains(
                                     &b.ty(),
                                 ) {
-                                    Some(Reason::Other)
-                                } else if let Some(reason) = self.cannot_derive_partialeq_or_partialord.get(
+                                    return Some(Reason::Other);
+                                }
+                                self.cannot_derive_partialeq_or_partialord.get(
                                     &b.ty(),
-                                ) {
-                                    Some(*reason)
-                                } else {
-                                    None
-                                }
-                            }).collect::<Vec<_>>();
-                            if !p.is_empty() {
-                                let all_is_too_large = p
-                                    .iter()
-                                    .all(|r| *r == Reason::ArrayTooLarge);
-                                if all_is_too_large {
-                                    Some(Reason::ArrayTooLarge)
-                                } else {
-                                    Some(Reason::Other)
-                                }
-                            } else {
-                                None
-                            }
+                                ).cloned()
+                            }).collect();
+                            choose_reason(&p)
                         }
-                }).collect::<Vec<_>>();
-                if !fields_cannot_derive_reasons.is_empty() {
+                    }).collect();
+                if let Some(reason) = choose_reason(&fields_cannot_derive_reasons) {
                     trace!(
                         "    fields cannot derive PartialEq or PartialOrd, so we can't either"
                     );
-                    let all_is_too_large = fields_cannot_derive_reasons
-                        .iter()
-                        .all(|r| *r == Reason::ArrayTooLarge);
-                    let reason = if all_is_too_large {
-                        Reason::ArrayTooLarge
-                    } else {
-                        Reason::Other
-                    };
                     return self.insert(id, reason);
                 }
 
@@ -378,7 +340,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             }
 
             TypeKind::TemplateInstantiation(ref template) => {
-                let args_cannot_derive_reasons = template
+                let args_cannot_derive_reasons: Vec<Reason> = template
                     .template_arguments()
                     .iter()
                     .filter_map(|arg| {
@@ -386,20 +348,12 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                             .get(&arg)
                             .cloned()
                     })
-                    .collect::<Vec<_>>();
-                if !args_cannot_derive_reasons.is_empty() {
+                    .collect();
+                if let Some(reason) = choose_reason(&args_cannot_derive_reasons) {
                     trace!(
                         "    template args cannot derive PartialEq or PartialOrd, so \
                             insantiation can't either"
                     );
-                    let all_is_too_large = args_cannot_derive_reasons
-                        .iter()
-                        .all(|r| *r == Reason::ArrayTooLarge);
-                    let reason = if all_is_too_large {
-                        Reason::ArrayTooLarge
-                    } else {
-                        Reason::Other
-                    };
                     return self.insert(id, reason);
                 }
 
@@ -449,4 +403,20 @@ impl<'ctx> From<CannotDerivePartialEqOrPartialOrd<'ctx>> for HashMap<ItemId, Rea
     fn from(analysis: CannotDerivePartialEqOrPartialOrd<'ctx>) -> Self {
         analysis.cannot_derive_partialeq_or_partialord
     }
+}
+
+/// Chooses the most appropriate Reason from provided list. 
+/// Returns None if list is empty.
+fn choose_reason(reasons: &[Reason]) -> Option<Reason> {
+    if reasons.is_empty() {
+       return None; 
+    }
+    let all_is_too_large = reasons
+        .iter()
+        .all(|r| *r == Reason::ArrayTooLarge);
+    Some(if all_is_too_large {
+        Reason::ArrayTooLarge
+    } else {
+        Reason::Other
+    })
 }
