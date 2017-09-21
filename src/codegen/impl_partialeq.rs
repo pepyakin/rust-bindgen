@@ -1,11 +1,11 @@
 
 use ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use ir::context::BindgenContext;
-use ir::item::{Item, ItemCanonicalName, IsOpaque};
+use ir::item::{Item, IsOpaque};
 use ir::ty::{TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
 use quote;
 
-pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Item) -> Option<quote::Tokens> {
+pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Item, ty_for_impl: &quote::Tokens) -> Option<quote::Tokens> {
     let _ty = item.expect_type();    
     if item.is_opaque(ctx, &()) {
         // We can't generate PartialEq for opaque types.
@@ -16,9 +16,6 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
         // Don't know how to generate PartialEq for Union
         return None;
     }
-
-    let canonical_name = item.canonical_name(ctx);
-    let canonical_ident = ctx.rust_ident(&canonical_name);
 
     let mut tokens = vec![];
 
@@ -60,7 +57,7 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
     }
 
     Some(quote! {
-        fn eq(&self, other: & #canonical_ident) -> bool {
+        fn eq(&self, other: & #ty_for_impl) -> bool {
             #( #tokens )&&*
         }
     })

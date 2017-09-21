@@ -1907,7 +1907,8 @@ impl CodeGenerator for CompInfo {
         }
 
         if needs_partialeq_impl {
-            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, item) {    
+            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, item, &ty_for_impl) {    
+                // TODO: prefix
                 result.push(quote! {
                     impl #generics ::std::cmp::PartialEq for #ty_for_impl {
                         #impl_
