@@ -1,4 +1,4 @@
-mod derive_debug;
+mod impl_debug;
 mod impl_partialeq;
 mod error;
 mod helpers;
@@ -1933,7 +1933,7 @@ impl CodeGenerator for CompInfo {
         }
 
         if needs_debug_impl {
-            let impl_ = derive_debug::gen_debug_impl(
+            let impl_ = impl_debug::gen_debug_impl(
                 ctx,
                 self.fields(),
                 item,
