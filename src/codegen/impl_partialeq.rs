@@ -39,15 +39,16 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
         for field in comp_info.fields() {
             match *field {
                 Field::DataMember(ref fd) => {
-                    let item = ctx.resolve_item(fd.ty());
+                    let ty_item = ctx.resolve_item(fd.ty());
                     let name = match fd.name() {
                         Some(name) => name,
                         None => {
                             // TODO: Bitfield stuff
-                            panic!()
+                            warn!("can't process field {:?} in {:?} with type {:?}", fd.name(), item.id(), ty_item.id());
+                            return None;
                         }
                     };
-                    match gen_field(ctx, item, name) {
+                    match gen_field(ctx, ty_item, name) {
                         Some(t) => tokens.push(t),
                         None => return None,
                     }
