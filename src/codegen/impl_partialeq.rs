@@ -15,7 +15,7 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
     let mut tokens = vec![];
 
     if comp_info.kind() == CompKind::Union {
-        // TODO: Is other cases possible?
+        // TODO: Is other cases are possible?
         tokens.push(quote! {
             &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
         });
@@ -52,9 +52,13 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
                         None => return None,
                     }
                 }
-                Field::Bitfields(_) => {
-                    // TODO: We don't know how to generate Bitfields
-                    panic!();
+                Field::Bitfields(ref bu) => {
+                    for bu in bu.bitfields() {
+                        let name_ident = ctx.rust_ident_raw(bu.name());
+                        tokens.push(quote! {
+                            self.#name_ident () == other.#name_ident ()
+                        });
+                    }
                 }
             }
         }
