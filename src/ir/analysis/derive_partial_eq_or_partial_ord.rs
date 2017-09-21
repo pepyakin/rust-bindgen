@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 /// Reason why we cannot derive PartialEq or PartialOrd.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CannotDerivePartialEqOrPartialOrdReason {
+pub enum Reason {
     /// Array that contains more than 32 elements.
     ArrayTooLarge,
 
@@ -47,7 +47,7 @@ pub struct CannotDerivePartialEqOrPartialOrd<'ctx> {
 
     // The incremental result of this analysis's computation. Everything in this
     // set cannot derive partialeq or partialord.
-    cannot_derive_partialeq_or_partialord: HashMap<ItemId, CannotDerivePartialEqOrPartialOrdReason>,
+    cannot_derive_partialeq_or_partialord: HashMap<ItemId, Reason>,
 
     // Dependencies saying that if a key ItemId has been inserted into the
     // `cannot_derive_partialeq_or_partialord` set, then each of the ids
@@ -83,7 +83,7 @@ impl<'ctx> CannotDerivePartialEqOrPartialOrd<'ctx> {
         }
     }
 
-    fn insert(&mut self, id: ItemId, reason: CannotDerivePartialEqOrPartialOrdReason) -> ConstrainResult {
+    fn insert(&mut self, id: ItemId, reason: Reason) -> ConstrainResult {
         trace!("inserting {:?} into the cannot_derive_partialeq_or_partialord because {:?}", id, reason);
 
         let _was_not_already_in_set = self.cannot_derive_partialeq_or_partialord.insert(id, reason);
@@ -101,7 +101,7 @@ impl<'ctx> CannotDerivePartialEqOrPartialOrd<'ctx> {
 impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
     type Node = ItemId;
     type Extra = &'ctx BindgenContext;
-    type Output = HashMap<ItemId, CannotDerivePartialEqOrPartialOrdReason>;
+    type Output = HashMap<ItemId, Reason>;
 
     fn new(
         ctx: &'ctx BindgenContext,
@@ -123,7 +123,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
     fn constrain(&mut self, id: ItemId) -> ConstrainResult {
         trace!("constrain: {:?}", id);
 
-        if Some(CannotDerivePartialEqOrPartialOrdReason::Other) ==
+        if Some(Reason::Other) ==
             self.cannot_derive_partialeq_or_partialord.get(&id).cloned()
         {
             trace!("    already know it cannot derive PartialEq or PartialOrd");
@@ -140,7 +140,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
         };
 
         if self.ctx.no_partialeq_by_name(&item) {
-            return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+            return self.insert(id, Reason::Other);
         }
 
         trace!("ty: {:?}", ty);
@@ -156,7 +156,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             } else {
                 // TODO: opaque can depend on arrays size at the moment
                 trace!("    we cannot derive PartialEq or PartialOrd for the layout");
-                self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other)
+                self.insert(id, Reason::Other)
             };
         }
 
@@ -169,7 +169,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             // `RUST_DERIVE_IN_ARRAY_LIMIT`. If we moved padding calculations
             // into the IR and computed them before this analysis, then we could
             // be precise rather than conservative here.
-            return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+            return self.insert(id, Reason::ArrayTooLarge);
         }
 
         match *ty.kind() {
@@ -198,7 +198,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                         "    arrays of T for which we cannot derive PartialEq or PartialOrd \
                             also cannot derive PartialEq or PartialOrd"
                     );
-                    return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                    return self.insert(id, Reason::Other);
                 }
 
                 if len <= RUST_DERIVE_IN_ARRAY_LIMIT {
@@ -206,7 +206,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     ConstrainResult::Same
                 } else {
                     trace!("    array is too large to derive PartialEq or PartialOrd");
-                    self.insert(id, CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                    self.insert(id, Reason::ArrayTooLarge)
                 }
             }
 
@@ -218,7 +218,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                         trace!(
                             "    function pointer that can't trivially derive PartialEq or PartialOrd"
                         );
-                        return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                        return self.insert(id, Reason::Other);
                     }
                 }
                 trace!("    pointers can derive PartialEq");
@@ -230,7 +230,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     trace!(
                         "    function that can't trivially derive PartialEq or PartialOrd"
                     );
-                    return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                    return self.insert(id, Reason::Other);
                 }
                 trace!("    function can derive PartialEq or PartialOrd");
                 ConstrainResult::Same
@@ -265,7 +265,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                 if info.kind() == CompKind::Union {
                     if self.ctx.options().rust_features().untagged_union() {
                         trace!("    cannot derive PartialEq or PartialOrd for Rust unions");
-                        return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                        return self.insert(id, Reason::Other);
                     }
 
                     if ty.layout(self.ctx).map_or(true, |l| {
@@ -282,7 +282,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                         // only for arrays greater than 32.
                         // TODO: But is there can be only arrays? 
                         // Why inside of the can_trivially_derive_partialeq_or_partialord is map_or(false) ?
-                        return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                        return self.insert(id, Reason::ArrayTooLarge);
                     }
                 }
 
@@ -299,12 +299,12 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     let arrays_too_large = info.base_members().iter().all(|base| {
                         self.cannot_derive_partialeq_or_partialord
                             .get(&base.ty)
-                            .map_or(true, |r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                            .map_or(true, |r| *r == Reason::ArrayTooLarge)
                     });
                     let reason = if arrays_too_large {
-                        CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                        Reason::ArrayTooLarge
                     } else {
-                        CannotDerivePartialEqOrPartialOrdReason::Other
+                        Reason::Other
                     };
                     return self.insert(id, reason);
                 }
@@ -314,7 +314,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                             if !self.ctx.whitelisted_items().contains(
                                 &data.ty(),
                             ) {
-                                Some(CannotDerivePartialEqOrPartialOrdReason::Other)
+                                Some(Reason::Other)
                             } else if let Some(reason) = self.cannot_derive_partialeq_or_partialord.get(
                                     &data.ty(),
                             ) {
@@ -329,13 +329,13 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                     "   we cannot derive PartialEq for a bitfield larger then \
                                         the limit"
                                 );
-                                return Some(CannotDerivePartialEqOrPartialOrdReason::Other);
+                                return Some(Reason::Other);
                             }
                             let p = bfu.bitfields().iter().filter_map(|b| {
                                 if !self.ctx.whitelisted_items().contains(
                                     &b.ty(),
                                 ) {
-                                    Some(CannotDerivePartialEqOrPartialOrdReason::Other)
+                                    Some(Reason::Other)
                                 } else if let Some(reason) = self.cannot_derive_partialeq_or_partialord.get(
                                     &b.ty(),
                                 ) {
@@ -347,11 +347,11 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                             if !p.is_empty() {
                                 let all_is_too_large = p
                                     .iter()
-                                    .all(|r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                                    .all(|r| *r == Reason::ArrayTooLarge);
                                 if all_is_too_large {
-                                    Some(CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                                    Some(Reason::ArrayTooLarge)
                                 } else {
-                                    Some(CannotDerivePartialEqOrPartialOrdReason::Other)
+                                    Some(Reason::Other)
                                 }
                             } else {
                                 None
@@ -364,11 +364,11 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     );
                     let all_is_too_large = fields_cannot_derive_reasons
                         .iter()
-                        .all(|r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                        .all(|r| *r == Reason::ArrayTooLarge);
                     let reason = if all_is_too_large {
-                        CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                        Reason::ArrayTooLarge
                     } else {
-                        CannotDerivePartialEqOrPartialOrdReason::Other
+                        Reason::Other
                     };
                     return self.insert(id, reason);
                 }
@@ -394,11 +394,11 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     );
                     let all_is_too_large = args_cannot_derive_reasons
                         .iter()
-                        .all(|r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                        .all(|r| *r == Reason::ArrayTooLarge);
                     let reason = if all_is_too_large {
-                        CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                        Reason::ArrayTooLarge
                     } else {
-                        CannotDerivePartialEqOrPartialOrdReason::Other
+                        Reason::Other
                     };
                     return self.insert(id, reason);
                 }
@@ -445,7 +445,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
     }
 }
 
-impl<'ctx> From<CannotDerivePartialEqOrPartialOrd<'ctx>> for HashMap<ItemId, CannotDerivePartialEqOrPartialOrdReason> {
+impl<'ctx> From<CannotDerivePartialEqOrPartialOrd<'ctx>> for HashMap<ItemId, Reason> {
     fn from(analysis: CannotDerivePartialEqOrPartialOrd<'ctx>) -> Self {
         analysis.cannot_derive_partialeq_or_partialord
     }

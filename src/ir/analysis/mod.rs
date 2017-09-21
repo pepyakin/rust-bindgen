@@ -57,7 +57,7 @@ mod derive_hash;
 pub use self::derive_hash::CannotDeriveHash;
 mod derive_partial_eq_or_partial_ord;
 pub use self::derive_partial_eq_or_partial_ord::{CannotDerivePartialEqOrPartialOrd,
-                                                 CannotDerivePartialEqOrPartialOrdReason};
+                                                 Reason as CannotDerivePartialEqOrPartialOrdReason};
 mod has_float;
 pub use self::has_float::HasFloat;
 use ir::context::{BindgenContext, ItemId};
