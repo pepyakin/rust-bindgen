@@ -1,18 +1,18 @@
 
-use ir::comp::{CompKind, Field, FieldMethods};
+use ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use ir::context::BindgenContext;
 use ir::item::{Item, ItemCanonicalName, IsOpaque};
 use ir::ty::{TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
 use quote;
 
-pub fn gen_partialeq_impl(ctx: &BindgenContext, fields: &[Field], item: &Item, kind: CompKind) -> Option<quote::Tokens> {
+pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Item) -> Option<quote::Tokens> {
     let _ty = item.expect_type();    
     if item.is_opaque(ctx, &()) {
         // We can't generate PartialEq for opaque types.
         return None;
     }
 
-    if kind == CompKind::Union {
+    if comp_info.kind() == CompKind::Union {
         // Don't know how to generate PartialEq for Union
         return None;
     }
@@ -21,7 +21,22 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, fields: &[Field], item: &Item, k
     let canonical_ident = ctx.rust_ident(&canonical_name);
 
     let mut tokens = vec![];
-    for field in fields {
+
+    for (i, base) in comp_info.base_members().iter().enumerate() {
+        // TODO: see quirks in codegen/mod.rs
+        let ty_item = ctx.resolve_item(base.ty);
+        let field_name = if i == 0 {
+            "_base".into()
+        } else {
+            format!("_base_{}", i)
+        };
+        match gen_field(ctx, ty_item, &field_name) {
+            Some(t) => tokens.push(t),
+            None => return None,
+        }
+    }
+
+    for field in comp_info.fields() {
         match *field {
             Field::DataMember(ref fd) => {
                 let item = ctx.resolve_item(fd.ty());
