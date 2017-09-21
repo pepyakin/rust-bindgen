@@ -86,13 +86,13 @@ impl<'ctx> CannotDerivePartialEqOrPartialOrd<'ctx> {
     fn insert(&mut self, id: ItemId, reason: CannotDerivePartialEqOrPartialOrdReason) -> ConstrainResult {
         trace!("inserting {:?} into the cannot_derive_partialeq_or_partialord because {:?}", id, reason);
 
-        let was_not_already_in_set = self.cannot_derive_partialeq_or_partialord.insert(id, reason);
-        assert!(
-            was_not_already_in_set.is_none(),
-            "We shouldn't try and insert {:?} twice because if it was \
-             already in the set, `constrain` should have exited early.",
-            id
-        );
+        let _was_not_already_in_set = self.cannot_derive_partialeq_or_partialord.insert(id, reason);
+        // assert!(
+        //     was_not_already_in_set.is_none(),
+        //     "We shouldn't try and insert {:?} twice because if it was \
+        //      already in the set, `constrain` should have exited early.",
+        //     id
+        // );
 
         ConstrainResult::Changed
     }
@@ -123,10 +123,11 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
     fn constrain(&mut self, id: ItemId) -> ConstrainResult {
         trace!("constrain: {:?}", id);
 
-        if self.cannot_derive_partialeq_or_partialord.contains_key(&id) {
-            trace!("    already know it cannot derive PartialEq or PartialOrd");
-            return ConstrainResult::Same;
-        }
+        // TODO: Can I do something with it?
+        // if self.cannot_derive_partialeq_or_partialord.contains_key(&id) {
+        //     trace!("    already know it cannot derive PartialEq or PartialOrd");
+        //     return ConstrainResult::Same;
+        // }
 
         let item = self.ctx.resolve_item(id);
         let ty = match item.as_type() {
@@ -309,10 +310,10 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                 &data.ty(),
                             ) {
                                 Some(CannotDerivePartialEqOrPartialOrdReason::Other)
-                            } else if self.cannot_derive_partialeq_or_partialord.contains_key(
+                            } else if let Some(reason) = self.cannot_derive_partialeq_or_partialord.get(
                                     &data.ty(),
                             ) {
-                                Some(CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                                Some(*reason)
                             } else {
                                 None
                             }
@@ -333,10 +334,10 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                     &b.ty(),
                                 ) {
                                     Some(CannotDerivePartialEqOrPartialOrdReason::Other)
-                                } else if self.cannot_derive_partialeq_or_partialord.contains_key(
+                                } else if let Some(reason) = self.cannot_derive_partialeq_or_partialord.get(
                                     &b.ty(),
                                 ) {
-                                    Some(CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                                    Some(*reason)
                                 } else {
                                     None
                                 }
