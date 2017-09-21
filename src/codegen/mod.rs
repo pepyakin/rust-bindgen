@@ -1505,7 +1505,8 @@ impl CodeGenerator for CompInfo {
             debug!("partialeq in derives!");
             derives.push("PartialEq");
         } else {
-            needs_partialeq_impl = ctx.options().derive_partialeq && 
+            needs_partialeq_impl = 
+                ctx.options().derive_partialeq && 
                 ctx.options().impl_partialeq &&
                 ctx.lookup_item_id_can_derive_partialeq_or_partialord(item.id())
                     .map_or(true, |x| {
