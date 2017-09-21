@@ -84,7 +84,7 @@ impl<'ctx> CannotDerivePartialEqOrPartialOrd<'ctx> {
     }
 
     fn insert(&mut self, id: ItemId, reason: CannotDerivePartialEqOrPartialOrdReason) -> ConstrainResult {
-        trace!("inserting {:?} into the cannot_derive_partialeq_or_partialord set", id);
+        trace!("inserting {:?} into the cannot_derive_partialeq_or_partialord because {:?}", id, reason);
 
         let was_not_already_in_set = self.cannot_derive_partialeq_or_partialord.insert(id, reason);
         assert!(
@@ -237,12 +237,13 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             TypeKind::ResolvedTypeRef(t) |
             TypeKind::TemplateAlias(t, _) |
             TypeKind::Alias(t) => {
-                if self.cannot_derive_partialeq_or_partialord.contains_key(&t) {
+                let reason = self.cannot_derive_partialeq_or_partialord.get(&t).cloned();
+                if let Some(reason) = reason {
                     trace!(
                         "    aliases and type refs to T which cannot derive \
                             PartialEq or PartialOrd also cannot derive PartialEq or PartialOrd"
                     );
-                    self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other)
+                    self.insert(id, reason)
                 } else {
                     trace!(
                         "    aliases and type refs to T which can derive \
@@ -279,7 +280,6 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     }
                 }
 
-                // TODO: case when base cannot derive because ArrayTooLong
                 let bases_cannot_derive =
                     info.base_members().iter().any(|base| {
                         !self.ctx.whitelisted_items().contains(&base.ty) ||
@@ -290,18 +290,32 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                         "    base members cannot derive PartialEq or PartialOrd, so we can't \
                             either"
                     );
-                    return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                    let arrays_too_large = info.base_members().iter().all(|base| {
+                        self.cannot_derive_partialeq_or_partialord
+                            .get(&base.ty)
+                            .map_or(true, |r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                    });
+                    let reason = if arrays_too_large {
+                        CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                    } else {
+                        CannotDerivePartialEqOrPartialOrdReason::Other
+                    };
+                    return self.insert(id, reason);
                 }
 
-                let fields_cannot_derive =
-                    info.fields().iter().any(|f| match *f {
+                let fields_cannot_derive_reasons = info.fields().iter().filter_map(|f| match *f {
                         Field::DataMember(ref data) => {
-                            !self.ctx.whitelisted_items().contains(
+                            if !self.ctx.whitelisted_items().contains(
                                 &data.ty(),
-                            ) ||
-                                self.cannot_derive_partialeq_or_partialord.contains_key(
+                            ) {
+                                Some(CannotDerivePartialEqOrPartialOrdReason::Other)
+                            } else if self.cannot_derive_partialeq_or_partialord.contains_key(
                                     &data.ty(),
-                                )
+                            ) {
+                                Some(CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                            } else {
+                                None
+                            }
                         }
                         Field::Bitfields(ref bfu) => {
                             if bfu.layout().align > RUST_DERIVE_IN_ARRAY_LIMIT {
@@ -314,19 +328,46 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
 
                             bfu.bitfields().iter().any(|b| {
                                 !self.ctx.whitelisted_items().contains(
+                            let p = bfu.bitfields().iter().filter_map(|b| {
+                                if !self.ctx.whitelisted_items().contains(
                                     &b.ty(),
-                                ) ||
-                                    self.cannot_derive_partialeq_or_partialord.contains_key(
-                                        &b.ty(),
-                                    )
-                            })
+                                ) {
+                                    Some(CannotDerivePartialEqOrPartialOrdReason::Other)
+                                } else if self.cannot_derive_partialeq_or_partialord.contains_key(
+                                    &b.ty(),
+                                ) {
+                                    Some(CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                                } else {
+                                    None
+                                }
+                            }).collect::<Vec<_>>();
+                            if !p.is_empty() {
+                                let all_is_too_large = p
+                                    .iter()
+                                    .all(|r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                                if all_is_too_large {
+                                    Some(CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge)
+                                } else {
+                                    Some(CannotDerivePartialEqOrPartialOrdReason::Other)
+                                }
+                            } else {
+                                None
+                            }
                         }
-                    });
-                if fields_cannot_derive {
+                }).collect::<Vec<_>>();
+                if !fields_cannot_derive_reasons.is_empty() {
                     trace!(
                         "    fields cannot derive PartialEq or PartialOrd, so we can't either"
                     );
-                    return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                    let all_is_too_large = fields_cannot_derive_reasons
+                        .iter()
+                        .all(|r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                    let reason = if all_is_too_large {
+                        CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                    } else {
+                        CannotDerivePartialEqOrPartialOrdReason::Other
+                    };
+                    return self.insert(id, reason);
                 }
 
                 trace!("    comp can derive PartialEq");
