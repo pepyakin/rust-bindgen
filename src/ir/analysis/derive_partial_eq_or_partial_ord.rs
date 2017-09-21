@@ -329,11 +329,8 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                     "   we cannot derive PartialEq for a bitfield larger then \
                                         the limit"
                                 );
-                                return true;
+                                return Some(CannotDerivePartialEqOrPartialOrdReason::Other);
                             }
-
-                            bfu.bitfields().iter().any(|b| {
-                                !self.ctx.whitelisted_items().contains(
                             let p = bfu.bitfields().iter().filter_map(|b| {
                                 if !self.ctx.whitelisted_items().contains(
                                     &b.ty(),
