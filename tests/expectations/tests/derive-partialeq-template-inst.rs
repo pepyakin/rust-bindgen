@@ -24,3 +24,65 @@ where
         &self.large[..] == &other.large[..] && self.data == other.data
     }
 }
+#[repr(C)]
+#[derive(Copy)]
+pub struct IntStr {
+    pub a: foo<::std::os::raw::c_int>,
+}
+#[test]
+fn bindgen_test_layout_IntStr() {
+    assert_eq!(
+        ::std::mem::size_of::<IntStr>(),
+        136usize,
+        concat!("Size of: ", stringify!(IntStr))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<IntStr>(),
+        4usize,
+        concat!("Alignment of ", stringify!(IntStr))
+    );
+    assert_eq!(
+        unsafe { &(*(0 as *const IntStr)).a as *const _ as usize },
+        0usize,
+        concat!(
+            "Alignment of field: ",
+            stringify!(IntStr),
+            "::",
+            stringify!(a)
+        )
+    );
+}
+impl Clone for IntStr {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl Default for IntStr {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+impl ::std::cmp::PartialEq for IntStr {
+    fn eq(&self, other: &IntStr) -> bool {
+        self.a == other.a
+    }
+}
+#[test]
+fn __bindgen_test_layout_foo_open0_int_close0_instantiation() {
+    assert_eq!(
+        ::std::mem::size_of::<foo<::std::os::raw::c_int>>(),
+        136usize,
+        concat!(
+            "Size of template specialization: ",
+            stringify!(foo<::std::os::raw::c_int>)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<foo<::std::os::raw::c_int>>(),
+        4usize,
+        concat!(
+            "Alignment of template specialization: ",
+            stringify!(foo<::std::os::raw::c_int>)
+        )
+    );
+}

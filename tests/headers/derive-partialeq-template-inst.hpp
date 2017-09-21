@@ -5,3 +5,7 @@ struct foo {
     int large[33];
     T data;
 };
+
+struct IntStr {
+    foo<int> a;
+};

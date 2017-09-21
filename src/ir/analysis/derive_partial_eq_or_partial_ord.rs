@@ -379,31 +379,39 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             }
 
             TypeKind::TemplateInstantiation(ref template) => {
-                let args_cannot_derive =
-                    template.template_arguments().iter().any(|arg| {
-                        self.cannot_derive_partialeq_or_partialord.contains_key(&arg)
-                    });
-                if args_cannot_derive {
+                let args_cannot_derive_reasons =
+                    template.template_arguments().iter().filter_map(|arg| {
+                        self.cannot_derive_partialeq_or_partialord.get(&arg).cloned()
+                    }).collect::<Vec<_>>();
+                if !args_cannot_derive_reasons.is_empty() {
                     trace!(
                         "    template args cannot derive PartialEq or PartialOrd, so \
                             insantiation can't either"
                     );
-                    return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                    let all_is_too_large = args_cannot_derive_reasons
+                        .iter()
+                        .all(|r| *r == CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
+                    let reason = if all_is_too_large {
+                        CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge
+                    } else {
+                        CannotDerivePartialEqOrPartialOrdReason::Other
+                    };
+                    return self.insert(id, reason);
                 }
 
                 assert!(
                     !template.template_definition().is_opaque(self.ctx, &()),
                     "The early ty.is_opaque check should have handled this case"
                 );
-                let def_cannot_derive = self.cannot_derive_partialeq_or_partialord.contains_key(
+                let def_cannot_derive_reason = self.cannot_derive_partialeq_or_partialord.get(
                     &template.template_definition(),
-                );
-                if def_cannot_derive {
+                ).cloned();
+                if let Some(def_cannot_derive_reason) = def_cannot_derive_reason {
                     trace!(
                         "    template definition cannot derive PartialEq or PartialOrd, so \
                             insantiation can't either"
                     );
-                    return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                    return self.insert(id, def_cannot_derive_reason);
                 }
 
                 trace!("    template instantiation can derive PartialEq or PartialOrd");

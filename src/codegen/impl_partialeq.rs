@@ -103,7 +103,11 @@ fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> Option<quote::Tok
         TypeKind::ObjCInterface(..) |
         TypeKind::ObjCId |
         TypeKind::ObjCSel |
-        TypeKind::Comp(..) => {
+        TypeKind::Comp(..) |
+        TypeKind::Pointer(_) |
+        TypeKind::Function(..) |
+        TypeKind::TemplateInstantiation(..) |
+        TypeKind::Opaque => {
             quote_equals(name_ident)
         }
 
@@ -122,17 +126,6 @@ fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> Option<quote::Tok
         TypeKind::Alias(t) => {
             let inner_item = ctx.resolve_item(t);
             gen_field(ctx, inner_item, name)
-        }
-
-        TypeKind::Pointer(_) => {
-            quote_equals(name_ident)
-        }
-
-        ref other => {
-            // TODO: List explicitly
-            // Not supported
-            panic!("{:?}", other);
-            // return None;
         }
     }
 }
