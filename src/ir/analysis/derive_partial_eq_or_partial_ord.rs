@@ -123,11 +123,12 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
     fn constrain(&mut self, id: ItemId) -> ConstrainResult {
         trace!("constrain: {:?}", id);
 
-        // TODO: Can I do something with it?
-        // if self.cannot_derive_partialeq_or_partialord.contains_key(&id) {
-        //     trace!("    already know it cannot derive PartialEq or PartialOrd");
-        //     return ConstrainResult::Same;
-        // }
+        if Some(CannotDerivePartialEqOrPartialOrdReason::Other) ==
+            self.cannot_derive_partialeq_or_partialord.get(&id).cloned()
+        {
+            trace!("    already know it cannot derive PartialEq or PartialOrd");
+            return ConstrainResult::Same;
+        }
 
         let item = self.ctx.resolve_item(id);
         let ty = match item.as_type() {
@@ -139,7 +140,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
         };
 
         if self.ctx.no_partialeq_by_name(&item) {
-            return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other)
+            return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
         }
 
         trace!("ty: {:?}", ty);
@@ -238,7 +239,8 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             TypeKind::ResolvedTypeRef(t) |
             TypeKind::TemplateAlias(t, _) |
             TypeKind::Alias(t) => {
-                let reason = self.cannot_derive_partialeq_or_partialord.get(&t).cloned();
+                let reason =
+                    self.cannot_derive_partialeq_or_partialord.get(&t).cloned();
                 if let Some(reason) = reason {
                     trace!(
                         "    aliases and type refs to T which cannot derive \
@@ -379,10 +381,15 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             }
 
             TypeKind::TemplateInstantiation(ref template) => {
-                let args_cannot_derive_reasons =
-                    template.template_arguments().iter().filter_map(|arg| {
-                        self.cannot_derive_partialeq_or_partialord.get(&arg).cloned()
-                    }).collect::<Vec<_>>();
+                let args_cannot_derive_reasons = template
+                    .template_arguments()
+                    .iter()
+                    .filter_map(|arg| {
+                        self.cannot_derive_partialeq_or_partialord
+                            .get(&arg)
+                            .cloned()
+                    })
+                    .collect::<Vec<_>>();
                 if !args_cannot_derive_reasons.is_empty() {
                     trace!(
                         "    template args cannot derive PartialEq or PartialOrd, so \
@@ -403,10 +410,12 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     !template.template_definition().is_opaque(self.ctx, &()),
                     "The early ty.is_opaque check should have handled this case"
                 );
-                let def_cannot_derive_reason = self.cannot_derive_partialeq_or_partialord.get(
-                    &template.template_definition(),
-                ).cloned();
-                if let Some(def_cannot_derive_reason) = def_cannot_derive_reason {
+                let def_cannot_derive_reason =
+                    self.cannot_derive_partialeq_or_partialord
+                        .get(&template.template_definition())
+                        .cloned();
+                if let Some(def_cannot_derive_reason) = def_cannot_derive_reason
+                {
                     trace!(
                         "    template definition cannot derive PartialEq or PartialOrd, so \
                             insantiation can't either"
