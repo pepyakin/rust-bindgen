@@ -1676,32 +1676,33 @@ impl CodeGenerator for CompInfo {
             }
         }
 
-        let mut generics = quote! {};
+        let mut generic_param_names = vec![];
 
         if let Some(ref params) = used_template_params {
-            if !params.is_empty() {
-                let mut param_names = vec![];
+            for (idx, ty) in params.iter().enumerate() {
+                let param = ctx.resolve_type(*ty);
+                let name = param.name().unwrap();
+                let ident = ctx.rust_ident(name);
+                generic_param_names.push(ident.clone());
 
-                for (idx, ty) in params.iter().enumerate() {
-                    let param = ctx.resolve_type(*ty);
-                    let name = param.name().unwrap();
-                    let ident = ctx.rust_ident(name);
-                    param_names.push(ident.clone());
-
-                    let prefix = ctx.trait_prefix();
-                    let field_name = ctx.rust_ident(format!("_phantom_{}", idx));
-                    fields.push(quote! {
-                        pub #field_name : ::#prefix::marker::PhantomData<
-                            ::#prefix::cell::UnsafeCell<#ident>
-                        > ,
-                    });
-                }
-
-                generics = quote! {
-                    < #( #param_names ),* >
-                };
+                let prefix = ctx.trait_prefix();
+                let field_name = ctx.rust_ident(format!("_phantom_{}", idx));
+                fields.push(quote! {
+                    pub #field_name : ::#prefix::marker::PhantomData<
+                        ::#prefix::cell::UnsafeCell<#ident>
+                    > ,
+                });
             }
         }
+
+        let generics = if !generic_param_names.is_empty() {
+            let generic_param_names = generic_param_names.clone();
+            quote! {
+                < #( #generic_param_names ),* >
+            }
+        } else {
+            quote! { }
+        };
 
         tokens.append(quote! {
             #generics {
@@ -1907,10 +1908,19 @@ impl CodeGenerator for CompInfo {
         }
 
         if needs_partialeq_impl {
-            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, item, &ty_for_impl) {    
-                // TODO: prefix
+            if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, item, &ty_for_impl) {
+                let partialeq_bounds = if !generic_param_names.is_empty() {
+                    let bounds = generic_param_names.iter().map(|t| {
+                        quote! { #t: PartialEq }
+                    });
+                    quote! { where #( #bounds ),* }
+                } else {
+                    quote! { }
+                };
+
+                // TODO: std/core prefix
                 result.push(quote! {
-                    impl #generics ::std::cmp::PartialEq for #ty_for_impl {
+                    impl #generics ::std::cmp::PartialEq for #ty_for_impl #partialeq_bounds {
                         #impl_
                     }
                 });
