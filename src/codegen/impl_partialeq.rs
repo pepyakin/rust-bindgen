@@ -12,49 +12,53 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
         panic!();
     }
 
-    if comp_info.kind() == CompKind::Union {
-        // TODO: Don't know how to generate PartialEq for Union
-        panic!();
-    }
-
     let mut tokens = vec![];
 
-    for (i, base) in comp_info.base_members().iter().enumerate() {
-        // TODO: see quirks in codegen/mod.rs
-        let ty_item = ctx.resolve_item(base.ty);
-        let field_name = if i == 0 {
-            "_base".into()
-        } else {
-            format!("_base_{}", i)
-        };
-        match gen_field(ctx, ty_item, &field_name) {
-            Some(t) => tokens.push(t),
-            None => return None,
-        }
-    }
+    if comp_info.kind() == CompKind::Union {
+        // TODO: Is other cases possible?
+        tokens.push(quote! {
+            &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
+        });
+    } else {
+        for (i, base) in comp_info.base_members().iter().enumerate() {
+            // TODO: see quirks in codegen/mod.rs
+            let ty_item = ctx.resolve_item(base.ty);
 
-    for field in comp_info.fields() {
-        match *field {
-            Field::DataMember(ref fd) => {
-                let item = ctx.resolve_item(fd.ty());
-                let name = match fd.name() {
-                    Some(name) => name,
-                    None => {
-                        // TODO: Bitfield stuff
-                        panic!()
+            // TODO: Move base field name generation into either in IR or in context.
+            let field_name = if i == 0 {
+                "_base".into()
+            } else {
+                format!("_base_{}", i)
+            };
+            match gen_field(ctx, ty_item, &field_name) {
+                Some(t) => tokens.push(t),
+                None => return None,
+            }
+        }
+
+        for field in comp_info.fields() {
+            match *field {
+                Field::DataMember(ref fd) => {
+                    let item = ctx.resolve_item(fd.ty());
+                    let name = match fd.name() {
+                        Some(name) => name,
+                        None => {
+                            // TODO: Bitfield stuff
+                            panic!()
+                        }
+                    };
+                    match gen_field(ctx, item, name) {
+                        Some(t) => tokens.push(t),
+                        None => return None,
                     }
-                };
-                match gen_field(ctx, item, name) {
-                    Some(t) => tokens.push(t),
-                    None => return None,
+                }
+                Field::Bitfields(_) => {
+                    // TODO: We don't know how to generate Bitfields
+                    panic!();
                 }
             }
-            Field::Bitfields(_) => {
-                // TODO: We don't know how to generate Bitfields
-                panic!();
-            }
         }
-    }
+    }    
 
     Some(quote! {
         fn eq(&self, other: & #ty_for_impl) -> bool {

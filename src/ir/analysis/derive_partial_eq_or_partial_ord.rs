@@ -275,9 +275,12 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                         );
                         return ConstrainResult::Same;
                     } else {
-                        // TODO: opaque can depend on arrays size at the moment 
-                        trace!("    union layout cannot derive PartialEq or PartialOrd");                        
-                        return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::Other);
+                        trace!("    union layout cannot derive PartialEq or PartialOrd");
+                        // This depends on the fact that can_trivially_derive_partialeq_or_partialord returns true 
+                        // only for arrays greater than 32.
+                        // TODO: But is there can be only arrays? 
+                        // Why inside of the can_trivially_derive_partialeq_or_partialord is map_or(false) ?
+                        return self.insert(id, CannotDerivePartialEqOrPartialOrdReason::ArrayTooLarge);
                     }
                 }
 
