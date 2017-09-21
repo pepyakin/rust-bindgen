@@ -1,17 +1,12 @@
 
 use ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use ir::context::BindgenContext;
-use ir::item::{Item, IsOpaque};
+use ir::item::Item;
 use ir::ty::{TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
 use quote;
 
 pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Item, ty_for_impl: &quote::Tokens) -> Option<quote::Tokens> {
     let _ty = item.expect_type();    
-    if item.is_opaque(ctx, &()) {
-        // TODO: We can't generate PartialEq for opaque types.
-        panic!();
-    }
-
     let mut tokens = vec![];
 
     if comp_info.kind() == CompKind::Union {
@@ -21,19 +16,27 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
         });
     } else {
         for (i, base) in comp_info.base_members().iter().enumerate() {
-            // TODO: see quirks in codegen/mod.rs
-            let ty_item = ctx.resolve_item(base.ty);
-
             // TODO: Move base field name generation into either in IR or in context.
+            if base.is_virtual() {
+                continue;
+            }
+
+            let base_ty = ctx.resolve_type(base.ty);
+            // NB: We won't include unsized types in our base chain because they
+            // would contribute to our size given the dummy field we insert for
+            // unsized types.
+            if base_ty.is_unsized(ctx, &base.ty) {
+                continue;
+            }
+
             let field_name = if i == 0 {
                 "_base".into()
             } else {
                 format!("_base_{}", i)
             };
-            match gen_field(ctx, ty_item, &field_name) {
-                Some(t) => tokens.push(t),
-                None => return None,
-            }
+
+            let ty_item = ctx.resolve_item(base.ty);
+            tokens.push(gen_field(ctx, ty_item, &field_name));
         }
 
         for field in comp_info.fields() {
@@ -48,14 +51,11 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
                             return None;
                         }
                     };
-                    match gen_field(ctx, ty_item, name) {
-                        Some(t) => tokens.push(t),
-                        None => return None,
-                    }
+                    tokens.push(gen_field(ctx, ty_item, name));
                 }
                 Field::Bitfields(ref bu) => {
-                    for bu in bu.bitfields() {
-                        let name_ident = ctx.rust_ident_raw(bu.name());
+                    for bitfield in bu.bitfields() {
+                        let name_ident = ctx.rust_ident_raw(bitfield.name());
                         tokens.push(quote! {
                             self.#name_ident () == other.#name_ident ()
                         });
@@ -72,22 +72,13 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
     })
 }
 
-fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> Option<quote::Tokens> {
-    let name_ident = ctx.rust_ident(name);
-
-    let ty = match item.as_type() {
-        Some(ty) => ty,
-        None => {
-            panic!();
-            // return None;
-        }
-    };
-
-    fn quote_equals(name_ident: quote::Ident) -> Option<quote::Tokens> {
-        Some(quote! {
-            self.#name_ident == other.#name_ident
-        })
+fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> quote::Tokens {
+    fn quote_equals(name_ident: quote::Ident) -> quote::Tokens {
+        quote! { self.#name_ident == other.#name_ident }
     }
+
+    let name_ident = ctx.rust_ident(name);
+    let ty = item.expect_type();
 
     match *ty.kind() {
         TypeKind::Void |
@@ -115,9 +106,9 @@ fn gen_field(ctx: &BindgenContext, item: &Item, name: &str) -> Option<quote::Tok
             if len <= RUST_DERIVE_IN_ARRAY_LIMIT {
                 quote_equals(name_ident)
             } else {
-                Some(quote! {
+                quote! {
                     &self. #name_ident [..] == &other. #name_ident [..]
-                })
+                }
             }
         }
 
