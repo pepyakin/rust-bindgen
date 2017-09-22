@@ -157,7 +157,7 @@ pub trait CanTriviallyDerivePartialEqOrPartialOrd {
 
 /// Reason why exactly we cannot automatically derive a trait.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CantDeriveReason {
+pub enum CannotDeriveReason {
     /// The only thing that stops us from automatically deriving is that
     /// array with more than maximum number of elements is used.
     /// 
@@ -171,5 +171,5 @@ pub enum CantDeriveReason {
 /// Whether it is possible or not to derive trait automatically.
 pub enum CanDerive {
     Yes,
-    No(CantDeriveReason)
+    No(CannotDeriveReason)
 }

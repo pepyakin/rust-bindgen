@@ -7,7 +7,7 @@ use super::analysis::{CannotDeriveCopy, CannotDeriveDebug,
                       HasFloat, analyze};
 use super::derive::{CanDeriveCopy, CanDeriveDebug, CanDeriveDefault,
                     CanDeriveHash, CanDerivePartialOrd, CanDeriveOrd,
-                    CanDerivePartialEq, CanDeriveEq, CantDeriveReason};
+                    CanDerivePartialEq, CanDeriveEq, CannotDeriveReason};
 use super::int::IntKind;
 use super::item::{HasTypeParamInArray, IsOpaque, Item, ItemAncestors,
                   ItemCanonicalPath, ItemSet};
@@ -241,7 +241,7 @@ pub struct BindgenContext {
     ///
     /// This is populated when we enter codegen by `compute_can_derive_partialeq`
     /// and is always `None` before that and `Some` after.
-    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, CantDeriveReason>>,
+    cannot_derive_partialeq_or_partialord: Option<HashMap<ItemId, CannotDeriveReason>>,
 
     /// The set of (`ItemId's of`) types that has vtable.
     ///
@@ -2165,7 +2165,7 @@ impl BindgenContext {
 
     /// Look up whether the item with `id` can
     /// derive partialeq or partialord.
-    pub fn lookup_item_id_can_derive_partialeq_or_partialord(&self, id: ItemId) -> Option<CantDeriveReason> {
+    pub fn lookup_item_id_can_derive_partialeq_or_partialord(&self, id: ItemId) -> Option<CannotDeriveReason> {
         assert!(
             self.in_codegen_phase(),
             "We only compute can_derive_partialeq_or_partialord when we enter codegen"

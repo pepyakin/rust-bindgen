@@ -9,7 +9,7 @@ use super::ty::TypeKind;
 use clang;
 use clang_sys::{self, CXCallingConv};
 use ir::derive::{CanTriviallyDeriveDebug, CanTriviallyDeriveHash,
-                 CanTriviallyDerivePartialEqOrPartialOrd, CanDerive, CantDeriveReason};
+                 CanTriviallyDerivePartialEqOrPartialOrd, CanDerive, CannotDeriveReason};
 use parse::{ClangItemParser, ClangSubItemParser, ParseError, ParseResult};
 use quote;
 use std::io;
@@ -559,12 +559,12 @@ impl CanTriviallyDeriveHash for FunctionSig {
 impl CanTriviallyDerivePartialEqOrPartialOrd for FunctionSig {
     fn can_trivially_derive_partialeq_or_partialord(&self) -> CanDerive {
         if self.argument_types.len() > RUST_DERIVE_FUNPTR_LIMIT {
-            return CanDerive::No(CantDeriveReason::Other);
+            return CanDerive::No(CannotDeriveReason::Other);
         }
 
         match self.abi {
             Abi::C | Abi::Unknown(..) => CanDerive::Yes,
-            _ => CanDerive::No(CantDeriveReason::Other),
+            _ => CanDerive::No(CannotDeriveReason::Other),
         }
     }
 }
