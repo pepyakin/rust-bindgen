@@ -5,28 +5,6 @@
 
 
 #[repr(C)]
-pub struct Opaque {
-    pub _bindgen_opaque_blob: [u32; 34usize],
-}
-#[test]
-fn bindgen_test_layout_Opaque() {
-    assert_eq!(
-        ::std::mem::size_of::<Opaque>(),
-        136usize,
-        concat!("Size of: ", stringify!(Opaque))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<Opaque>(),
-        4usize,
-        concat!("Alignment of ", stringify!(Opaque))
-    );
-}
-impl Default for Opaque {
-    fn default() -> Self {
-        unsafe { ::std::mem::zeroed() }
-    }
-}
-#[repr(C)]
 #[derive(Copy)]
 pub struct Base {
     pub large: [::std::os::raw::c_int; 33usize],
@@ -100,71 +78,5 @@ impl Default for ShouldDerivePartialEq {
 impl ::std::cmp::PartialEq for ShouldDerivePartialEq {
     fn eq(&self, other: &ShouldDerivePartialEq) -> bool {
         self._base == other._base
-    }
-}
-#[repr(C)]
-pub struct BaseThatCantDerivePartialEq {
-    pub large: [::std::os::raw::c_int; 33usize],
-    pub a: Opaque,
-}
-#[test]
-fn bindgen_test_layout_BaseThatCantDerivePartialEq() {
-    assert_eq!(
-        ::std::mem::size_of::<BaseThatCantDerivePartialEq>(),
-        268usize,
-        concat!("Size of: ", stringify!(BaseThatCantDerivePartialEq))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<BaseThatCantDerivePartialEq>(),
-        4usize,
-        concat!("Alignment of ", stringify!(BaseThatCantDerivePartialEq))
-    );
-    assert_eq!(
-        unsafe { &(*(0 as *const BaseThatCantDerivePartialEq)).large as *const _ as usize },
-        0usize,
-        concat!(
-            "Alignment of field: ",
-            stringify!(BaseThatCantDerivePartialEq),
-            "::",
-            stringify!(large)
-        )
-    );
-    assert_eq!(
-        unsafe { &(*(0 as *const BaseThatCantDerivePartialEq)).a as *const _ as usize },
-        132usize,
-        concat!(
-            "Alignment of field: ",
-            stringify!(BaseThatCantDerivePartialEq),
-            "::",
-            stringify!(a)
-        )
-    );
-}
-impl Default for BaseThatCantDerivePartialEq {
-    fn default() -> Self {
-        unsafe { ::std::mem::zeroed() }
-    }
-}
-#[repr(C)]
-pub struct ShouldNotDerivePartialEq {
-    pub _base: Base,
-    pub _base_1: BaseThatCantDerivePartialEq,
-}
-#[test]
-fn bindgen_test_layout_ShouldNotDerivePartialEq() {
-    assert_eq!(
-        ::std::mem::size_of::<ShouldNotDerivePartialEq>(),
-        400usize,
-        concat!("Size of: ", stringify!(ShouldNotDerivePartialEq))
-    );
-    assert_eq!(
-        ::std::mem::align_of::<ShouldNotDerivePartialEq>(),
-        4usize,
-        concat!("Alignment of ", stringify!(ShouldNotDerivePartialEq))
-    );
-}
-impl Default for ShouldNotDerivePartialEq {
-    fn default() -> Self {
-        unsafe { ::std::mem::zeroed() }
     }
 }
