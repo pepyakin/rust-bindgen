@@ -15,7 +15,7 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
             &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
         });
     } else {
-        for (i, base) in comp_info.base_members().iter().enumerate() {
+        for base in comp_info.base_members().iter() {
             if base.is_virtual() {
                 continue;
             }
@@ -29,22 +29,15 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
             }
 
             let ty_item = ctx.resolve_item(base.ty);
-            let field_name = base.field_name;
-            tokens.push(gen_field(ctx, ty_item, &field_name));
+            let field_name = &base.field_name;
+            tokens.push(gen_field(ctx, ty_item, field_name));
         }
 
         for field in comp_info.fields() {
             match *field {
                 Field::DataMember(ref fd) => {
                     let ty_item = ctx.resolve_item(fd.ty());
-                    let name = match fd.name() {
-                        Some(name) => name,
-                        None => {
-                            // TODO: Bitfield stuff
-                            warn!("can't process field {:?} in {:?} with type {:?}", fd.name(), item.id(), ty_item.id());
-                            return None;
-                        }
-                    };
+                    let name = fd.name().unwrap();
                     tokens.push(gen_field(ctx, ty_item, name));
                 }
                 Field::Bitfields(ref bu) => {

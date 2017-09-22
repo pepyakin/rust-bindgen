@@ -315,7 +315,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                 );
                                 return Some(Reason::Other);
                             }
-                            let p: Vec<Reason> = bfu.bitfields().iter().filter_map(|b| {
+                            let reasons: Vec<Reason> = bfu.bitfields().iter().filter_map(|b| {
                                 if !self.ctx.whitelisted_items().contains(
                                     &b.ty(),
                                 ) {
@@ -325,7 +325,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                                     &b.ty(),
                                 ).cloned()
                             }).collect();
-                            choose_reason(&p)
+                            choose_reason(&reasons)
                         }
                     }).collect();
                 if let Some(reason) = choose_reason(&fields_cannot_derive_reasons) {
