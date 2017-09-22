@@ -1,7 +1,7 @@
 
 use ir::comp::{CompInfo, CompKind, Field, FieldMethods};
 use ir::context::BindgenContext;
-use ir::item::Item;
+use ir::item::{Item, IsOpaque};
 use ir::ty::{TypeKind, RUST_DERIVE_IN_ARRAY_LIMIT};
 use quote;
 
@@ -9,7 +9,11 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
     let _ty = item.expect_type();    
     let mut tokens = vec![];
 
-    if comp_info.kind() == CompKind::Union {
+    if item.is_opaque(ctx, &()) {
+        tokens.push(quote! {
+            &self._bindgen_opaque_blob[..] == &other._bindgen_opaque_blob[..]
+        });
+    } else if comp_info.kind() == CompKind::Union {
         // TODO: Is other cases are possible?
         tokens.push(quote! {
             &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
