@@ -14,7 +14,6 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
             &self._bindgen_opaque_blob[..] == &other._bindgen_opaque_blob[..]
         });
     } else if comp_info.kind() == CompKind::Union {
-        // TODO: Is other cases are possible?
         tokens.push(quote! {
             &self.bindgen_union_field[..] == &other.bindgen_union_field[..]
         });

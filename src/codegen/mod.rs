@@ -1475,7 +1475,6 @@ impl CodeGenerator for CompInfo {
         }
 
         if item.can_derive_partialeq(ctx) {
-            debug!("partialeq in derives!");
             derives.push("PartialEq");
         } else {
             needs_partialeq_impl = 
@@ -1485,8 +1484,6 @@ impl CodeGenerator for CompInfo {
                     .map_or(true, |x| {
                         x == CantDeriveReason::ArrayTooLarge
                     });
-
-            debug!("needs_partialeq_impl={}", needs_partialeq_impl);
         }
 
         if item.can_derive_eq(ctx) {
@@ -1697,8 +1694,6 @@ impl CodeGenerator for CompInfo {
                 });
             }
         }
-        
-        debug!("generics");
 
         let generics = if !generic_param_names.is_empty() {
             let generic_param_names = generic_param_names.clone();
@@ -1874,8 +1869,6 @@ impl CodeGenerator for CompInfo {
             }
         }
 
-        debug!("pre ty_for_impl");
-
         // NB: We can't use to_rust_ty here since for opaque types this tries to
         // use the specialization knowledge to generate a blob field.
         let ty_for_impl = quote! {
@@ -1914,7 +1907,6 @@ impl CodeGenerator for CompInfo {
             });
         }
 
-        debug!("needs_partialeq_impl={:?}", needs_partialeq_impl);
         if needs_partialeq_impl {
             if let Some(impl_) = impl_partialeq::gen_partialeq_impl(ctx, self, item, &ty_for_impl) {
                 
