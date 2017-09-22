@@ -1,4 +1,4 @@
-// bindgen-flags: --with-derive-partialeq --impl-partialeq --opaque-type "Opaque"
+// bindgen-flags: --with-derive-partialeq --impl-partialeq
 
 struct Opaque {
     int i;
@@ -10,14 +10,4 @@ class Base {
 };
 
 class ShouldDerivePartialEq: Base {
-};
-
-// This class and all it's subclasses can't derive PartialEq because
-// it contains opaque member.
-class BaseThatCantDerivePartialEq {
-    int large[33];
-    Opaque a;
-};
-
-class ShouldNotDerivePartialEq: Base, BaseThatCantDerivePartialEq {
 };

@@ -133,7 +133,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
             }
 
             let layout_can_derive = ty.layout(self.ctx)
-                .map_or(CanDerive::No(CantDeriveReason::Other), |l| {
+                .map_or(CanDerive::Yes, |l| {
                     l.opaque().can_trivially_derive_partialeq_or_partialord()
                 });
 
@@ -258,7 +258,7 @@ impl<'ctx> MonotoneFramework for CannotDerivePartialEqOrPartialOrd<'ctx> {
                     }
 
                     let layout_can_derive = ty.layout(self.ctx)
-                        .map_or(CanDerive::No(CantDeriveReason::Other), |l| {
+                        .map_or(CanDerive::Yes, |l| {
                             l.opaque().can_trivially_derive_partialeq_or_partialord()
                         });
                     return match layout_can_derive {
