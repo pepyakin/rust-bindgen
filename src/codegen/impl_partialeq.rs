@@ -16,7 +16,6 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
         });
     } else {
         for (i, base) in comp_info.base_members().iter().enumerate() {
-            // TODO: Move base field name generation into either in IR or in context.
             if base.is_virtual() {
                 continue;
             }
@@ -29,13 +28,8 @@ pub fn gen_partialeq_impl(ctx: &BindgenContext, comp_info: &CompInfo, item: &Ite
                 continue;
             }
 
-            let field_name = if i == 0 {
-                "_base".into()
-            } else {
-                format!("_base_{}", i)
-            };
-
             let ty_item = ctx.resolve_item(base.ty);
+            let field_name = base.field_name;
             tokens.push(gen_field(ctx, ty_item, &field_name));
         }
 
